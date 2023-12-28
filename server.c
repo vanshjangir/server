@@ -1,3 +1,4 @@
+#include <asm-generic/socket.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -10,7 +11,7 @@
 #include <unistd.h>
 
 #define SERVER_PORT 8080
-#define MAX_THREADS 10
+#define MAX_THREADS 1000
 #define INITIAL_ID 10000000
 
 typedef struct{
@@ -187,7 +188,7 @@ void* thread_f(){
 
         struct epoll_event event;
         event.data.fd = temp->fd;
-        event.events = EPOLLIN | EPOLLET | EPOLLONESHOT;
+        event.events = EPOLLIN | EPOLLRDHUP | EPOLLONESHOT;
 
         if(epoll_ctl(epoll_fd, EPOLL_CTL_MOD, temp->fd, &event) == -1){
             printf("epoll_ctl client");
@@ -211,6 +212,7 @@ int main(int argc, char *argv[]){
 
     int s_socket;
     int flags;
+    int reuse;
     socklen_t s_addr_len;
     struct sockaddr_in s_addr;
     struct epoll_event event;
@@ -226,6 +228,12 @@ int main(int argc, char *argv[]){
     flags = fcntl(s_socket, F_GETFL, 0);
     fcntl(s_socket, F_SETFL, flags | O_NONBLOCK);
 
+    reuse = 1;
+    if(setsockopt(s_socket, SOL_SOCKET, SO_REUSEPORT, &reuse, sizeof(reuse))<0){
+        perror("setting SO_REUSEPORT failed");
+        exit(-1);
+    }
+
     s_addr.sin_port = htons(SERVER_PORT);
     s_addr.sin_family = AF_INET;
     s_addr.sin_addr.s_addr = INADDR_ANY;
@@ -237,7 +245,7 @@ int main(int argc, char *argv[]){
         return -1;
     }
 
-    event.events = EPOLLET | EPOLLIN;
+    event.events = EPOLLIN;
     event.data.fd = s_socket;
     if(epoll_ctl(epoll_fd, EPOLL_CTL_ADD, s_socket, &event) == -1){
         perror("epoll_ctl");
@@ -269,6 +277,7 @@ int main(int argc, char *argv[]){
             printf("error creating thread:%d\n", i+1);
         }
     }
+    printf("threads created\n");
 
     while(1){
 
@@ -294,7 +303,7 @@ int main(int argc, char *argv[]){
                     new_client->id = INITIAL_ID+NUM_CLIENTS+1;
 
                     event.data.fd = new_client->sockfd;
-                    event.events = EPOLLIN | EPOLLET | EPOLLONESHOT;
+                    event.events = EPOLLIN | EPOLLRDHUP | EPOLLONESHOT;
 
                     if(epoll_ctl(epoll_fd, EPOLL_CTL_ADD, new_client->sockfd, &event) == -1){
                         printf("epoll_ctl client");
@@ -310,7 +319,10 @@ int main(int argc, char *argv[]){
                     free(new_client);
                 }
             }
-            else{
+            else if(event_arr[i].events & EPOLLRDHUP){
+                epoll_ctl(epoll_fd, EPOLL_CTL_DEL, event_arr[i].data.fd, NULL);
+            }
+            else if(event_arr[i].events & EPOLLIN){
                 int fd = event_arr[i].data.fd;
                 pthread_mutex_lock(&mutex);
                 enqueue(fd);

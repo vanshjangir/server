@@ -32,7 +32,7 @@ void* recv_f(server_info *SERVER){
         char buf[len +1];
         recv(SERVER->sockfd, buf, len, 0);
         buf[len] = '\0';
-        printf("%.28s\n", buf);
+        printf("%s\n", buf);
     }
 }
 
@@ -55,6 +55,7 @@ int main(int argc, char **argv){
         printf("trying againg\n");
         sleep(1);
     }
+    getchar();
 
     pthread_create(&send_t, NULL, (void*)&send_f, (void*) SERVER);
     pthread_create(&recv_t, NULL, (void*)&recv_f, (void*) SERVER);
