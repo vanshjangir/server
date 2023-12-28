@@ -42,6 +42,7 @@ typedef struct{
 
 int NUM_CLIENTS = 0;
 int MAX_CLIENTS = 1000;
+int epoll_fd;
 threadqueue *QUEUE;
 client_info **CLIENTS;
 pthread_mutex_t mutex;
@@ -183,6 +184,14 @@ void* thread_f(){
         pthread_mutex_unlock(&mutex);
 
         handle_client(temp->fd);
+
+        struct epoll_event event;
+        event.data.fd = temp->fd;
+        event.events = EPOLLIN | EPOLLET | EPOLLONESHOT;
+
+        if(epoll_ctl(epoll_fd, EPOLL_CTL_MOD, temp->fd, &event) == -1){
+            printf("epoll_ctl client");
+        }
     }
     return 0;
 }
@@ -201,7 +210,6 @@ int main(int argc, char *argv[]){
     }
 
     int s_socket;
-    int epoll_fd;
     int flags;
     socklen_t s_addr_len;
     struct sockaddr_in s_addr;
@@ -286,7 +294,7 @@ int main(int argc, char *argv[]){
                     new_client->id = INITIAL_ID+NUM_CLIENTS+1;
 
                     event.data.fd = new_client->sockfd;
-                    event.events = EPOLLIN | EPOLLET;
+                    event.events = EPOLLIN | EPOLLET | EPOLLONESHOT;
 
                     if(epoll_ctl(epoll_fd, EPOLL_CTL_ADD, new_client->sockfd, &event) == -1){
                         printf("epoll_ctl client");
