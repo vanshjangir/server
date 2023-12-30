@@ -55,11 +55,12 @@ int main(int argc, char **argv){
         printf("trying againg\n");
         sleep(1);
     }
-    getchar();
 
-    pthread_create(&send_t, NULL, (void*)&send_f, (void*) SERVER);
-    pthread_create(&recv_t, NULL, (void*)&recv_f, (void*) SERVER);
+    send(SERVER->sockfd, "00000028MSG:10000001:10000002:HELLO;", 36, 0);
 
-    pthread_join(send_t, NULL);
-    pthread_join(recv_t, NULL);
+    //pthread_create(&send_t, NULL, (void*)&send_f, (void*) SERVER);
+    //pthread_create(&recv_t, NULL, (void*)&recv_f, (void*) SERVER);
+
+    //pthread_join(send_t, NULL);
+    //pthread_join(recv_t, NULL);
 }

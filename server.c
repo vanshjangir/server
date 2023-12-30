@@ -132,7 +132,7 @@ int receive_buf(int fd, request *req){
     for(int i=0; i<len-23; i++)
         req->message[i] = buffer[22+i];
     req->message[len-23] = '\0';
-    req->msg_size = len-23;
+    req->msg_size = len-22;
 
     return 0;
 }
@@ -147,15 +147,15 @@ int get_fd(int r_id){
 
 void send_buf(request *req){
     
-    char header[8];
+    char buffer[req->msg_size +8];
     int size = req->msg_size;
     int fd = get_fd(req->receiver_id);
     for(int i=7; i>=0; i--){
-        header[i] = (size%10)+'0';
+        buffer[i] = (size%10)+'0';
         size /= 10;
     }
-    send(fd, header, 8, 0);
-    send(fd, req->message, req->msg_size, 0);
+    strncat(buffer, req->message, req->msg_size);
+    send(fd, buffer, req->msg_size +8, 0);
 }
 
 void handle_client(int fd){
@@ -168,7 +168,8 @@ void handle_client(int fd){
         //fetch fn
     }
     else if(strncmp(req->type, "MSG", 3) == 0){
-        send_buf(req);
+        //send_buf(req);
+        printf("msg received from fd %d\n", fd);
     }
 }
 
@@ -321,6 +322,7 @@ int main(int argc, char *argv[]){
             }
             else if(event_arr[i].events & EPOLLRDHUP){
                 epoll_ctl(epoll_fd, EPOLL_CTL_DEL, event_arr[i].data.fd, NULL);
+                close(event_arr[i].data.fd);
             }
             else if(event_arr[i].events & EPOLLIN){
                 int fd = event_arr[i].data.fd;
