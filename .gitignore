@@ -1,3 +1,4 @@
-server
-client
-setup.sh
+example/client
+example/example
+example/scm.o
+example/setup.sh

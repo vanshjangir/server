@@ -9,32 +9,11 @@
 #define SERVER_IP "127.0.0.1"
 #define SERVER_PORT 8080
 
-
 typedef struct server_info{
     int sockfd;
     struct sockaddr_in addr;
     socklen_t addr_len;
 } server_info;
-
-void* send_f(server_info *SERVER){
-    while(1){
-        char buf[1024];
-        getchar();
-        send(SERVER->sockfd, "00000028MSG:10000001:10000002:HELLO;", 36, 0);
-    }
-}
-
-void* recv_f(server_info *SERVER){
-    while(1){
-        char header[9];
-        recv(SERVER->sockfd, header, 8, 0);
-        char len = atoi(header);
-        char buf[len +1];
-        recv(SERVER->sockfd, buf, len, 0);
-        buf[len] = '\0';
-        printf("%s\n", buf);
-    }
-}
 
 int main(int argc, char **argv){
 
@@ -58,10 +37,4 @@ int main(int argc, char **argv){
 
     getchar();
     send(SERVER->sockfd, "00000028MSG:10000001:10000002:HELLO;", 36, 0);
-
-    //pthread_create(&send_t, NULL, (void*)&send_f, (void*) SERVER);
-    //pthread_create(&recv_t, NULL, (void*)&recv_f, (void*) SERVER);
-
-    //pthread_join(send_t, NULL);
-    //pthread_join(recv_t, NULL);
 }
