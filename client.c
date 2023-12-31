@@ -56,6 +56,7 @@ int main(int argc, char **argv){
         sleep(1);
     }
 
+    getchar();
     send(SERVER->sockfd, "00000028MSG:10000001:10000002:HELLO;", 36, 0);
 
     //pthread_create(&send_t, NULL, (void*)&send_f, (void*) SERVER);

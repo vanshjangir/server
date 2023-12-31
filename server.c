@@ -1,17 +1,15 @@
-#include <asm-generic/socket.h>
-#include <fcntl.h>
 #include <stdio.h>
-#include <stdlib.h>
-#include <pthread.h>
 #include <string.h>
+#include <stdlib.h>
 #include <sys/socket.h>
-#include <sys/epoll.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
+#include <fcntl.h>
+#include <sys/epoll.h>
+#include <pthread.h>
 #include <unistd.h>
 
 #define SERVER_PORT 8080
-#define MAX_THREADS 1000
 #define INITIAL_ID 10000000
 
 typedef struct{
@@ -20,7 +18,6 @@ typedef struct{
     struct sockaddr_in addr;
     socklen_t addr_len;
 } client_info;
-
 
 typedef struct NODE{
     int fd;
@@ -34,32 +31,25 @@ typedef struct{
 } threadqueue;
 
 typedef struct{
-    char type[4];
-    int receiver_id;
-    int sender_id;
-    char *message;
-    int msg_size;
-} request;
+    void* (*fptr)(void*);
+    void *args;
+} server_args;
 
 int NUM_CLIENTS = 0;
 int MAX_CLIENTS = 1000;
+int MAX_THREADS = 10000;
 int epoll_fd;
 threadqueue *QUEUE;
 client_info **CLIENTS;
 pthread_mutex_t mutex;
 pthread_cond_t cond;
 
+int create_server(server_args*,int,int,int);
 NODE* get_node(int);
 void enqueue(int);
 NODE* dequeue();
-int receive_buf(int,request*);
-void send_buf(request*);
-void handle_client(int);
-request* parse(char[],int);
-void fetch(int,char[]);
-void* thread_f();
+void* thread_f(server_args*);
 void handshake(client_info*);
-int get_fd(int);
 
 NODE* get_node(int val){
     NODE *temp = (NODE*)malloc(sizeof(NODE));
@@ -78,7 +68,6 @@ void enqueue(int val){
         QUEUE->rear->link = temp;
         QUEUE->rear = temp;
     }
-
     QUEUE->num_nodes++;
 }
 
@@ -95,85 +84,11 @@ NODE* dequeue(){
             QUEUE->head = NULL;
             QUEUE->rear = NULL;
         }
-        
         return temp;
     }
 }
 
-int receive_buf(int fd, request *req){
-
-    char header[9];
-    if(recv(fd, header, 8, 0) <= 0){
-        return -1;
-    }
-    
-    header[8] = '\0';
-
-    char id[9];
-    int len = atoi(header);
-    char buffer[len +1];
-
-    recv(fd, buffer, len, 0);
-    
-    for(int i=0; i<3; i++)
-        req->type[i] = buffer[i];
-
-    for(int i=0; i<8; i++)
-        id[i] = buffer[4+i];
-    id[8] = '\0';
-    req->sender_id = atoi(id);
-
-    for(int i=0; i<8; i++)
-        id[i] = buffer[13+i];
-    id[8] = '\0';
-    req->receiver_id = atoi(id);
-
-    req->message = (char*)malloc((len-22)*sizeof(char));
-    for(int i=0; i<len-23; i++)
-        req->message[i] = buffer[22+i];
-    req->message[len-23] = '\0';
-    req->msg_size = len-22;
-
-    return 0;
-}
-
-int get_fd(int r_id){
-    for(int i=0; i<NUM_CLIENTS; i++){
-        if(CLIENTS[i]->id == r_id)
-            return CLIENTS[i]->sockfd;
-    }
-    return -1;
-}
-
-void send_buf(request *req){
-    
-    char buffer[req->msg_size +8];
-    int size = req->msg_size;
-    int fd = get_fd(req->receiver_id);
-    for(int i=7; i>=0; i--){
-        buffer[i] = (size%10)+'0';
-        size /= 10;
-    }
-    strncat(buffer, req->message, req->msg_size);
-    send(fd, buffer, req->msg_size +8, 0);
-}
-
-void handle_client(int fd){
-    request *req;
-    req = (request*)malloc(sizeof(request));
-    
-    if(receive_buf(fd, req) != 0)
-        return;
-    if(strncmp(req->type, "FCH", 3) == 0){
-        //fetch fn
-    }
-    else if(strncmp(req->type, "MSG", 3) == 0){
-        //send_buf(req);
-        printf("msg received from fd %d\n", fd);
-    }
-}
-
-void* thread_f(){
+void* thread_f(server_args *handler){
 
     while(1){
 
@@ -185,7 +100,7 @@ void* thread_f(){
         temp = dequeue();
         pthread_mutex_unlock(&mutex);
 
-        handle_client(temp->fd);
+        handler->fptr(handler->args);
 
         struct epoll_event event;
         event.data.fd = temp->fd;
@@ -205,12 +120,8 @@ void handshake(client_info *client){
 }
 
 
-int main(int argc, char *argv[]){
+int create_server(server_args *handler, int MAX_CLIENTS, int MAX_THREADS, int HANDSHAKE){
     
-    if(argc > 1){
-        MAX_CLIENTS = atoi(argv[1]);
-    }
-
     int s_socket;
     int flags;
     int reuse;
@@ -222,7 +133,7 @@ int main(int argc, char *argv[]){
 
     s_socket = socket(AF_INET, SOCK_STREAM, 0);
     if(s_socket == -1){
-        perror("socket");
+        printf("error creating socket\n");
         return -1;
     }
 
@@ -231,7 +142,7 @@ int main(int argc, char *argv[]){
 
     reuse = 1;
     if(setsockopt(s_socket, SOL_SOCKET, SO_REUSEPORT, &reuse, sizeof(reuse))<0){
-        perror("setting SO_REUSEPORT failed");
+        printf("setting SO_REUSEPORT failed\n");
         exit(-1);
     }
 
@@ -242,17 +153,16 @@ int main(int argc, char *argv[]){
 
     epoll_fd = epoll_create1(0);
     if(epoll_fd == -1){
-        perror("epoll_create1");
+        printf("epoll_create1");
         return -1;
     }
 
     event.events = EPOLLIN;
     event.data.fd = s_socket;
     if(epoll_ctl(epoll_fd, EPOLL_CTL_ADD, s_socket, &event) == -1){
-        perror("epoll_ctl");
+        printf("epoll_ctl");
         return -1;
     }
-
 
     if(bind(s_socket, (struct sockaddr*)&s_addr, s_addr_len) != 0){
         printf("bind failed");
@@ -266,7 +176,6 @@ int main(int argc, char *argv[]){
         return -1;
     }
 
-    printf("listening on port 8080\n");
 
     CLIENTS = (client_info**)malloc(MAX_CLIENTS*sizeof(client_info*));
     QUEUE = (threadqueue*)malloc(sizeof(threadqueue));
@@ -274,17 +183,16 @@ int main(int argc, char *argv[]){
     pthread_mutex_init(&mutex, NULL);
     pthread_cond_init(&cond, NULL);
     for(int i=0; i<MAX_THREADS; i++){
-        if(pthread_create(&t_pool[i], NULL, (void*)&thread_f, NULL) != 0){
+        if(pthread_create(&t_pool[i], NULL, (void*)&thread_f, (void*) handler) != 0){
             printf("error creating thread:%d\n", i+1);
         }
     }
-    printf("threads created\n");
 
     while(1){
 
         int num_events = epoll_wait(epoll_fd, event_arr, MAX_CLIENTS, -1);
         if(num_events == -1){
-            perror("epoll");
+            printf("epoll wait error");
             return -1;
         }
 
@@ -309,12 +217,14 @@ int main(int argc, char *argv[]){
                     if(epoll_ctl(epoll_fd, EPOLL_CTL_ADD, new_client->sockfd, &event) == -1){
                         printf("epoll_ctl client");
                         close(new_client->sockfd);
-                    }else{
-                        printf("new connections %d\n", NUM_CLIENTS+1);
                     }
 
                     CLIENTS[NUM_CLIENTS] = new_client;
                     NUM_CLIENTS++;
+
+                    if(HANDSHAKE == 1){
+                        handshake(new_client);
+                    }
                 }
                 else{
                     free(new_client);
