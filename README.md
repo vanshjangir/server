@@ -6,7 +6,7 @@ The create_server function receive four arguments
 1. A server_args struct
 2. Maximum number of clients to be handled
 3. Maximum numer of threads to be created
-4. Handshake(1 or 0) (to be implemented soon).
+4. Handshake(1 or 0) (to be implemented soon)
 
 If a client is sending a message the function provided in server_args will be called (see example).
 
