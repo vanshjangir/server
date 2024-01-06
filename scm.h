@@ -39,12 +39,10 @@ typedef struct{
 } server_args;
 
 
-int create_server(server_args*,int,int,int);
+int create_server(server_args*,int,int);
 NODE* get_node(int);
 void enqueue(int);
 NODE* dequeue();
 void* thread_f(server_args*);
-void handshake(client_info*);
 
 #endif // !SCM_H
-

@@ -71,14 +71,7 @@ void* thread_f(server_args *handler){
     return 0;
 }
 
-void handshake(client_info *client){
-    char buf[8];
-    snprintf(buf, 8, "%d", client->id);
-    send(client->sockfd ,buf, 8, 0);
-}
-
-
-int create_server(server_args *handler, int MAX_CLIENTS, int MAX_THREADS, int HANDSHAKE){
+int create_server(server_args *handler, int MAX_CLIENTS, int MAX_THREADS){
     
     int s_socket;
     int flags;
@@ -179,10 +172,6 @@ int create_server(server_args *handler, int MAX_CLIENTS, int MAX_THREADS, int HA
 
                     CLIENTS[NUM_CLIENTS] = new_client;
                     NUM_CLIENTS++;
-
-                    if(HANDSHAKE == 1){
-                        handshake(new_client);
-                    }
                 }
                 else{
                     free(new_client);

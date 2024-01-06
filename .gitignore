@@ -3,3 +3,4 @@ example/example
 example/scm.o
 example/example.o
 example/setup.sh
+makefile
