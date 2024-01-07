@@ -2,7 +2,7 @@
 The idea is to handle multiple live, concurrent connections on a single machine with minimum latency in each connection. It does that by using thread pooling and [EPOLL](https://en.wikipedia.org/wiki/Epoll)
 
 ## Usage
-The create_server function receive four arguments
+The create_server function receive three arguments
 1. A server_args struct
 2. Maximum number of clients to be handled
 3. Maximum numer of threads to be created
