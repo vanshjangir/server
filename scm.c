@@ -1,11 +1,7 @@
 #include "scm.h"
 
-int NUM_CLIENTS = 0;
-int MAX_CLIENTS = 1000;
-int MAX_THREADS = 10000;
 int epoll_fd;
 threadqueue *QUEUE;
-client_info **CLIENTS;
 pthread_mutex_t mutex;
 pthread_cond_t cond;
 
@@ -58,7 +54,7 @@ void* thread_f(server_args *handler){
         temp = dequeue();
         pthread_mutex_unlock(&mutex);
 
-        handler->fptr(handler->args);
+        handler->fptr(temp->fd, handler->args);
 
         struct epoll_event event;
         event.data.fd = temp->fd;
@@ -67,6 +63,7 @@ void* thread_f(server_args *handler){
         if(epoll_ctl(epoll_fd, EPOLL_CTL_MOD, temp->fd, &event) == -1){
             printf("epoll_ctl client");
         }
+        free(temp);
     }
     return 0;
 }
@@ -128,7 +125,6 @@ int create_server(server_args *handler, int MAX_CLIENTS, int MAX_THREADS){
     }
 
 
-    CLIENTS = (client_info**)malloc(MAX_CLIENTS*sizeof(client_info*));
     QUEUE = (threadqueue*)malloc(sizeof(threadqueue));
 
     pthread_mutex_init(&mutex, NULL);
@@ -160,7 +156,6 @@ int create_server(server_args *handler, int MAX_CLIENTS, int MAX_THREADS){
                 if(new_client->sockfd != -1){
                     int c_flags = fcntl(new_client->sockfd, F_GETFL, 0);
                     fcntl(new_client->sockfd, F_SETFL, c_flags | O_NONBLOCK);
-                    new_client->id = INITIAL_ID+NUM_CLIENTS+1;
 
                     event.data.fd = new_client->sockfd;
                     event.events = EPOLLIN | EPOLLRDHUP | EPOLLONESHOT;
@@ -169,9 +164,6 @@ int create_server(server_args *handler, int MAX_CLIENTS, int MAX_THREADS){
                         printf("epoll_ctl client");
                         close(new_client->sockfd);
                     }
-
-                    CLIENTS[NUM_CLIENTS] = new_client;
-                    NUM_CLIENTS++;
                 }
                 else{
                     free(new_client);

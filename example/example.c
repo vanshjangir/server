@@ -1,8 +1,10 @@
 #include "../scm.h"
 
-void* client_handle(void* x){
+void* client_handle(int fd, void* x){
     int *i = (int*)x;
-    printf("received value %d\n", *i);
+    char buf[2];
+    recv(fd, buf, 2, 0);
+    printf("%.2s received with arg %d on fd %d\n", buf, *i, fd);
     return i;
 }
 
@@ -11,5 +13,5 @@ int main(){
     server_args s1;
     s1.fptr = client_handle;
     s1.args = &y;
-    create_server(&s1, 100010, 1000);
+    create_server(&s1, 100000, 4);
 }

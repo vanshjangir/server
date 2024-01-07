@@ -13,11 +13,9 @@
 #include <unistd.h>
 
 #define SERVER_PORT 8080
-#define INITIAL_ID 10000000
 
 typedef struct{
     int sockfd;
-    int id;
     struct sockaddr_in addr;
     socklen_t addr_len;
 } client_info;
@@ -34,8 +32,9 @@ typedef struct{
 } threadqueue;
 
 typedef struct{
-    void* (*fptr)(void*);
+    void* (*fptr)(int,void*);
     void *args;
+    int fd;
 } server_args;
 
 

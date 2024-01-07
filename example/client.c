@@ -6,7 +6,7 @@
 #include <unistd.h>
 #include <pthread.h>
 
-#define SERVER_IP "192.168.0.110"
+#define SERVER_IP "127.0.0.1"
 #define SERVER_PORT 8080
 
 typedef struct server_info{
@@ -31,10 +31,9 @@ int main(int argc, char **argv){
         if(connect(SERVER->sockfd, (struct sockaddr*)&SERVER->addr, SERVER->addr_len) == 0){
             break;
         }
-        printf("trying againg\n");
+        printf("trying again\n");
         sleep(1);
     }
-    sleep(6);
-    send(SERVER->sockfd, "00000028MSG:10000001:10000002:HELLO;", 36, 0);
-    sleep(1000);
+    sleep(10);
+    send(SERVER->sockfd, "hi", 2, 0);
 }
