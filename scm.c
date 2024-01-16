@@ -4,6 +4,7 @@ int epoll_fd;
 threadqueue *QUEUE;
 pthread_mutex_t mutex;
 pthread_cond_t cond;
+enum state STATE;
 
 NODE* get_node(int val){
     NODE *temp = (NODE*)malloc(sizeof(NODE));
@@ -55,6 +56,9 @@ void* thread_f(server_args *handler){
         pthread_mutex_unlock(&mutex);
 
         handler->fptr(temp->fd, handler->args);
+        if(STATE == STATELESS){
+            continue;
+        }
 
         struct epoll_event event;
         event.data.fd = temp->fd;
@@ -68,7 +72,9 @@ void* thread_f(server_args *handler){
     return 0;
 }
 
-int create_server(server_args *handler, int MAX_CLIENTS, int MAX_THREADS){
+int create_server(server_args *handler, int MAX_CLIENTS, int MAX_THREADS, enum state type){
+
+    STATE = type;
     
     int s_socket;
     int flags;

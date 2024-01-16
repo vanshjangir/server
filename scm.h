@@ -37,8 +37,12 @@ typedef struct{
     int fd;
 } server_args;
 
+enum state{
+    STATEFUL,
+    STATELESS,
+};
 
-int create_server(server_args*,int,int);
+int create_server(server_args*,int,int,enum state);
 NODE* get_node(int);
 void enqueue(int);
 NODE* dequeue();

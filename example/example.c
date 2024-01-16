@@ -13,5 +13,5 @@ int main(){
     server_args s1;
     s1.fptr = client_handle;
     s1.args = &y;
-    create_server(&s1, 100000, 4);
+    create_server(&s1, 100000, 4, STATEFUL);
 }
