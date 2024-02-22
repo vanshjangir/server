@@ -1,4 +1,4 @@
-#include "../scm.h"
+#include "../cm.h"
 
 void* client_handle(int fd, void* x){
     int *i = (int*)x;

@@ -1,4 +1,4 @@
-# Scalable client manager
+# Client manager
 The idea is to handle multiple live, concurrent connections on a single machine with minimum latency in each connection. It does that by using thread pooling and [EPOLL](https://en.wikipedia.org/wiki/Epoll)
 
 ## Usage
